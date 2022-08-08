@@ -1,5 +1,5 @@
 function generatePassword(){
-    length=${1}
+    length=${1:-40}
     pass=$( choose() { echo ${1:RANDOM%${#1}:1} $RANDOM; }
             {
                 choose '!@#$%^\&'
@@ -15,6 +15,21 @@ function generatePassword(){
     echo $pass
 }
 
-var=$(generatePassword)
 
-echo $var
+function createSSMsecret(){
+    ssmPath=${1}
+    hasSpecial=${3:-true}
+    passLength=${4:-40}
+
+    params=$( aws ssm describe-parameters --filters "Key=Name, Values=['${ssmPath}']" --query 'Parameters | length([*])' )
+
+    if [[ "${params}" == "0" ]]; then
+        password=$( generatePassword ${passLength} )
+    fi
+
+    aws ssm put-parameter \
+        --name "${ssmPath}" \
+        --type String \
+        --value ${password:0:${passLength}} 
+
+}
